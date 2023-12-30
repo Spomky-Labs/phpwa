@@ -33,6 +33,7 @@ final readonly class Configuration implements ConfigurationInterface
         $this->setupRelatedApplications($rootNode);
         $this->setupShortcuts($rootNode);
         $this->setupSharedTarget($rootNode);
+        $this->setupWidgets($rootNode);
         $this->setupServiceWorker($rootNode);
 
         return $treeBuilder;
@@ -77,38 +78,7 @@ final readonly class Configuration implements ConfigurationInterface
     private function setupScreenshots(ArrayNodeDefinition $node): void
     {
         $node->children()
-            ->arrayNode('screenshots')
-                ->treatFalseLike([])
-                ->treatTrueLike([])
-                ->treatNullLike([])
-                ->info('The screenshots of the application.')
-                ->arrayPrototype()
-                    ->children()
-                        ->scalarNode('src')
-                            ->isRequired()
-                            ->info('The path to the screenshot.')
-                            ->example('screenshot/lowres.webp')
-                        ->end()
-                        ->scalarNode('form_factor')
-                            ->info('The form factor of the screenshot. Will guess the form factor if not set.')
-                            ->example(['wide', 'narrow'])
-                        ->end()
-                        ->scalarNode('label')
-                            ->info('The label of the screenshot.')
-                            ->example('Homescreen of Awesome App')
-                        ->end()
-                        ->scalarNode('platform')
-                            ->info('The platform of the screenshot.')
-                            ->example(
-                                ['android', 'windows', 'chromeos', 'ipados', 'ios', 'kaios', 'macos', 'windows', 'xbox']
-                            )
-                        ->end()
-                        ->scalarNode('format')
-                            ->info('The format of the screenshot. Will convert the file if set.')
-                            ->example(['jpg', 'png', 'webp'])
-                        ->end()
-                    ->end()
-                ->end()
+            ->append($this->getScreenshotsNode())
         ;
     }
 
@@ -371,7 +341,7 @@ final readonly class Configuration implements ConfigurationInterface
             ->end()
             ->scalarNode('scope')
                 ->info('The scope of the application.')
-                ->example('/app/')
+                ->example(['/app/', 'https://app.foo.com'])
             ->end()
             ->scalarNode('start_url')
                 ->info('The start URL of the application.')
@@ -380,6 +350,37 @@ final readonly class Configuration implements ConfigurationInterface
             ->scalarNode('theme_color')
                 ->info('The theme color of the application.')
                 ->example('red')
+            ->end()
+            ->arrayNode('edge_side_panel')
+                ->info('Specifies whether or not your app supports the side panel view in Microsoft Edge.')
+                ->children()
+                    ->integerNode('preferred_width')
+                        ->info('Specifies the preferred width of the side panel view in Microsoft Edge.')
+                    ->end()
+                ->end()
+            ->end()
+            ->scalarNode('iarc_rating_id')
+                ->info(
+                    'Specifies the International Age Rating Coalition (IARC) rating ID for the app. See https://www.globalratings.com/how-iarc-works.aspx for more information.'
+                )
+            ->end()
+            ->arrayNode('scope_extensions')
+                ->info(
+                    'Specifies a list of origin patterns to associate with. This allows for your app to control multiple subdomains and top-level domains as a single entity.'
+                )
+                ->arrayPrototype()
+                    ->children()
+                        ->scalarNode('origin')
+                            ->isRequired()
+                            ->info('Specifies the origin pattern to associate with.')
+                            ->example('*.foo.com')
+                        ->end()
+                    ->end()
+                ->end()
+            ->end()
+            ->scalarNode('handle_links')
+                ->info('Specifies the default link handling for the web app.')
+                ->example(['auto', 'preferred', 'not-preferred'])
             ->end()
         ->end()
         ;
@@ -391,6 +392,9 @@ final readonly class Configuration implements ConfigurationInterface
         $node = $treeBuilder->getRootNode();
         assert($node instanceof ArrayNodeDefinition);
         $node
+            ->info(
+                'An array of icons to be used for the widget. If missing, the icons manifest member is used instead. Icons larger than 1024x1024 are ignored.'
+            )
             ->treatFalseLike([])
             ->treatTrueLike([])
             ->treatNullLike([])
@@ -415,6 +419,58 @@ final readonly class Configuration implements ConfigurationInterface
                     ->scalarNode('purpose')
                         ->info('The purpose of the icon.')
                         ->example(['any', 'maskable', 'monochrome'])
+                    ->end()
+                ->end()
+            ->end()
+        ;
+
+        return $node;
+    }
+
+    private function getScreenshotsNode(): ArrayNodeDefinition
+    {
+        $treeBuilder = new TreeBuilder('screenshots');
+        $node = $treeBuilder->getRootNode();
+        assert($node instanceof ArrayNodeDefinition);
+        $node
+            ->treatFalseLike([])
+            ->treatTrueLike([])
+            ->treatNullLike([])
+            ->arrayPrototype()
+                ->children()
+                    ->scalarNode('src')
+                        ->isRequired()
+                        ->info('The path to the screenshot.')
+                        ->example('screenshot/lowres.webp')
+                    ->end()
+                    ->scalarNode('form_factor')
+                        ->info('The form factor of the screenshot. Will guess the form factor if not set.')
+                        ->example(['wide', 'narrow'])
+                    ->end()
+                    ->scalarNode('label')
+                        ->info('The label of the screenshot.')
+                        ->example('Homescreen of Awesome App')
+                    ->end()
+                    ->scalarNode('platform')
+                        ->info('The platform of the screenshot.')
+                        ->example(
+                            [
+                                'android',
+                                'windows',
+                                'chromeos',
+                                'ipados',
+                                'ios',
+                                'kaios',
+                                'macos',
+                                'windows',
+                                'xbox',
+                                'any',
+                            ]
+                        )
+                    ->end()
+                    ->scalarNode('format')
+                        ->info('The format of the screenshot. Will convert the file if set.')
+                        ->example(['jpg', 'png', 'webp'])
                     ->end()
                 ->end()
             ->end()
@@ -463,6 +519,72 @@ final readonly class Configuration implements ConfigurationInterface
                     ->booleanNode('use_cache')
                         ->defaultTrue()
                         ->info('Whether the service worker should use the cache.')
+                    ->end()
+                ->end()
+            ->end()
+        ->end();
+    }
+
+    private function setupWidgets(ArrayNodeDefinition $node): void
+    {
+        $node->children()
+            ->arrayNode('widgets')
+                ->info(
+                    'EXPERIMENTAL. Specifies PWA-driven widgets. See https://learn.microsoft.com/en-us/microsoft-edge/progressive-web-apps-chromium/how-to/widgets for more information'
+                )
+                ->arrayPrototype()
+                    ->children()
+                        ->scalarNode('name')
+                            ->isRequired()
+                            ->info('The title of the widget, presented to users.')
+                        ->end()
+                        ->scalarNode('short_name')
+                            ->info('An alternative short version of the name.')
+                        ->end()
+                        ->scalarNode('description')
+                            ->isRequired()
+                            ->info('The description of the widget.')
+                            ->example('My awesome widget')
+                        ->end()
+                        ->append($this->getIconsNode())
+                        ->append($this->getScreenshotsNode()->cannotBeEmpty())
+                        ->scalarNode('tag')
+                            ->isRequired()
+                            ->info('A string used to reference the widget in the PWA service worker.')
+                        ->end()
+                        ->scalarNode('template')
+                            ->info(
+                                'The template to use to display the widget in the operating system widgets dashboard. Note: this property is currently only informational and not used. See ms_ac_template below.'
+                            )
+                        ->end()
+                        ->scalarNode('ms_ac_template')
+                            ->isRequired()
+                            ->info(
+                                'The URL of the custom Adaptive Cards template to use to display the widget in the operating system widgets dashboard. See Define a widget template below.'
+                            )
+                        ->end()
+                        ->scalarNode('data')
+                            ->info(
+                                'The URL where the data to fill the template with can be found. If present, this URL is required to return valid JSON.'
+                            )
+                        ->end()
+                        ->scalarNode('type')
+                            ->info('The MIME type for the widget data.')
+                        ->end()
+                        ->booleanNode('auth')
+                            ->info('A boolean indicating if the widget requires authentication.')
+                        ->end()
+                        ->integerNode('update')
+                            ->info(
+                                'The frequency, in seconds, at which the widget will be updated. Code in your service worker must perform the updating; the widget is not updated automatically. See Access widget instances at runtime.'
+                            )
+                        ->end()
+                        ->booleanNode('multiple')
+                            ->defaultTrue()
+                            ->info(
+                                'A boolean indicating whether to allow multiple instances of the widget. Defaults to true.'
+                            )
+                        ->end()
                     ->end()
                 ->end()
             ->end()

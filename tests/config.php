@@ -151,6 +151,22 @@ return static function (ContainerConfigurator $container) {
                 ],
             ],
         ],
+        'edge_side_panel' => [
+            'preferred_width' => 480,
+        ],
+        'iarc_rating_id' => '123456',
+        'scope_extensions' => [
+            [
+                'origin' => '*.foo.com',
+            ],
+            [
+                'origin' => 'https://*.bar.com',
+            ],
+            [
+                'origin' => 'https://*.baz.com',
+            ],
+        ],
+        'handle_links' => 'auto',
         'serviceworker' => [
             'generate' => true,
             'src' => '/my-sw.js',
