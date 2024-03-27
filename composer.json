@@ -45,7 +45,7 @@
     },
     "require-dev": {
         "dbrekelmans/bdi": "^1.1",
-        "infection/infection": "^0.27",
+        "infection/infection": "^0.27 || ^0.28",
         "phpstan/extension-installer": "^1.1",
         "phpstan/phpstan": "^1.0",
         "phpstan/phpstan-beberlei-assert": "^1.0",
